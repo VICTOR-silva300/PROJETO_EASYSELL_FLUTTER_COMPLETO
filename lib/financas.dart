@@ -45,27 +45,39 @@ class _FinancasPageState extends State<FinancasPage> {
     }
   }
 
-  double _valor(Map<String, dynamic> v) {
-    final raw = v['Preco_gasto'] ?? v['preco'] ?? v['valor'] ?? 0;
-    if (raw is num) return raw.toDouble();
-    return double.tryParse('$raw'.replaceAll(',', '.')) ?? 0;
-  }
+  double _numero(dynamic valor) => valor is num
+      ? valor.toDouble()
+      : double.tryParse(valor?.toString().replaceAll(',', '.') ?? '') ?? 0;
+
+  double _valor(Map<String, dynamic> venda) => _numero(venda['Preco_gasto']);
 
   String _cliente(Map<String, dynamic> v) =>
       (v['name'] ?? v['cliente'] ?? 'Cliente').toString();
 
   String _status(Map<String, dynamic> v) =>
-      (v['status'] ?? 'registrada').toString();
+      (v['status'] ?? 'Concluída').toString();
 
-  bool _concluida(Map<String, dynamic> venda) {
-    final status = _status(venda).toLowerCase();
-    return status == 'concluída' ||
-        status == 'concluida' ||
-        status == 'completed' ||
-        status == 'finalizada';
+  bool _concluida(Map<String, dynamic> venda) => _status(venda) == 'Concluída';
+
+  String? _dataVenda(Map<String, dynamic> venda) {
+    final raw = venda['createdAt'] ?? venda['data'] ?? venda['created_at'];
+    final data = DateTime.tryParse(raw?.toString() ?? '')?.toLocal();
+    if (data == null) return null;
+    return '${data.day.toString().padLeft(2, '0')}/'
+        '${data.month.toString().padLeft(2, '0')}/'
+        '${data.year} • '
+        '${data.hour.toString().padLeft(2, '0')}:'
+        '${data.minute.toString().padLeft(2, '0')}';
   }
 
-  String _money(double v) => 'R\$ ${v.toStringAsFixed(2).replaceAll('.', ',')}';
+  String _money(double valor) {
+    final partes = valor.toStringAsFixed(2).split('.');
+    final inteiro = partes[0].replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (match) => '.',
+    );
+    return 'R\$ $inteiro,${partes[1]}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +88,9 @@ class _FinancasPageState extends State<FinancasPage> {
     );
     final concluidas = vendasConcluidas.length;
     final ticketMedio = concluidas == 0 ? 0.0 : total / concluidas;
+    final taxaConclusao = _vendas.isEmpty
+        ? 0
+        : (concluidas * 100 / _vendas.length).round();
 
     return RefreshIndicator(
       onRefresh: _carregar,
@@ -165,15 +180,16 @@ class _FinancasPageState extends State<FinancasPage> {
           ),
           const SizedBox(height: 14),
           Container(
-            padding: const EdgeInsets.all(19),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: AppCores.gradRoxo,
-              borderRadius: BorderRadius.circular(23),
+              gradient: c.gradDestaque,
+              borderRadius: BorderRadius.circular(27),
+              border: Border.all(color: c.roxo.withValues(alpha: 0.18)),
               boxShadow: [
                 BoxShadow(
-                  color: c.roxo.withValues(alpha: 0.17),
-                  blurRadius: 20,
-                  offset: const Offset(0, 7),
+                  color: c.roxo.withValues(alpha: 0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
                 ),
               ],
             ),
@@ -182,19 +198,57 @@ class _FinancasPageState extends State<FinancasPage> {
               children: [
                 Row(
                   children: [
-                    const Icon(
-                      Icons.trending_up_rounded,
-                      color: Colors.white,
-                      size: 18,
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.account_balance_wallet_rounded,
+                        color: Colors.white,
+                        size: 21,
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'RECEITA CONFIRMADA',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.82),
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.2,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Resumo financeiro',
+                            style: TextStyle(
+                              color: c.texto,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Receita das vendas concluídas',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: c.textoFraco, fontSize: 9),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: c.verde.withValues(alpha: 0.11),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.trending_up_rounded,
+                        color: c.verde,
+                        size: 15,
                       ),
                     ),
                   ],
@@ -202,21 +256,82 @@ class _FinancasPageState extends State<FinancasPage> {
                 const SizedBox(height: 10),
                 Text(
                   _money(total),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 29,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: c.texto,
+                    fontSize: 34,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: -0.5,
+                    letterSpacing: -1.4,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Calculada somente com vendas concluídas',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.78),
-                    fontSize: 11,
-                  ),
+                  'Faturamento confirmado da empresa',
+                  style: TextStyle(color: c.textoSuave, fontSize: 10),
                 ),
+                if (!_loading && _erro == null) ...[
+                  const SizedBox(height: 19),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 7,
+                          decoration: BoxDecoration(
+                            color: c.roxo.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: (taxaConclusao / 100).clamp(0.0, 1.0),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [c.roxo, c.roxoClaro],
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '$taxaConclusao% concluídas',
+                        style: TextStyle(
+                          color: c.roxoClaro,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Container(height: 1, color: c.bordaSutil),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      _infoDestaque(
+                        'Ticket médio',
+                        _money(ticketMedio),
+                        c.verde,
+                        Icons.account_balance_wallet_outlined,
+                      ),
+                      _infoDestaque(
+                        'Pedidos',
+                        '${_vendas.length}',
+                        c.azul,
+                        Icons.receipt_long_outlined,
+                      ),
+                      _infoDestaque(
+                        'Concluídas',
+                        '$concluidas',
+                        c.roxoClaro,
+                        Icons.check_circle_outline_rounded,
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -229,196 +344,181 @@ class _FinancasPageState extends State<FinancasPage> {
           else if (_erro != null)
             _FinanceiroErro(mensagem: _erro!, onRetry: _carregar)
           else ...[
-            Row(
-              children: [
-                Expanded(
-                  child: _FinCard(
-                    titulo: 'Vendas',
-                    valor: '${_vendas.length}',
-                    icon: Icons.point_of_sale_rounded,
-                    cor: c.roxo,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _FinCard(
-                    titulo: 'Concluídas',
-                    valor: '$concluidas',
-                    icon: Icons.check_circle_rounded,
-                    cor: c.verde,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _FinCard(
-              titulo: 'Ticket médio',
-              valor: _money(ticketMedio),
-              icon: Icons.analytics_outlined,
-              cor: c.azul,
-            ),
             const SizedBox(height: 20),
             Row(
               children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: c.roxo.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.receipt_long_rounded,
+                    color: c.roxoClaro,
+                    size: 19,
+                  ),
+                ),
+                const SizedBox(width: 11),
                 Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Movimentações',
+                        style: TextStyle(
+                          color: c.texto,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 17,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Acompanhe suas vendas recentes',
+                        style: TextStyle(color: c.textoSuave, fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: c.roxo.withValues(alpha: 0.09),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: c.roxo.withValues(alpha: 0.12)),
+                  ),
                   child: Text(
-                    'Movimentações',
+                    '${_vendas.length}',
                     style: TextStyle(
-                      color: c.texto,
+                      color: c.roxoClaro,
+                      fontSize: 11,
                       fontWeight: FontWeight.w900,
-                      fontSize: 18,
                     ),
                   ),
                 ),
-                Text(
-                  '${_vendas.length} registros',
-                  style: TextStyle(color: c.textoSuave, fontSize: 11),
-                ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Últimas vendas registradas',
-              style: TextStyle(color: c.textoSuave, fontSize: 12),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 15),
             if (_vendas.isEmpty)
               Container(
-                padding: const EdgeInsets.all(20),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 28,
+                ),
                 decoration: BoxDecoration(
                   gradient: c.gradCard,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(22),
                   border: Border.all(color: c.bordaSutil),
                 ),
-                child: Text(
-                  'Nenhuma venda registrada ainda.',
-                  style: TextStyle(color: c.textoSuave),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: c.roxo.withValues(alpha: 0.09),
+                        borderRadius: BorderRadius.circular(17),
+                      ),
+                      child: Icon(
+                        Icons.receipt_long_outlined,
+                        color: c.roxoClaro,
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(height: 13),
+                    Text(
+                      'Nenhuma movimentação ainda',
+                      style: TextStyle(
+                        color: c.texto,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'As vendas registradas aparecerão aqui.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: c.textoSuave, fontSize: 11),
+                    ),
+                  ],
                 ),
               )
             else
-              ..._vendas.take(30).map((v) {
-                final st = _status(v);
-                final concluida = _concluida(v);
-                final corStatus = concluida
-                    ? c.verde
-                    : st.toLowerCase().contains('cancel')
-                    ? c.vermelho
-                    : c.amarelo;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    gradient: c.gradCard,
-                    borderRadius: BorderRadius.circular(19),
-                    border: Border.all(color: c.bordaSutil),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(
-                          alpha: c.ehEscuro ? 0.08 : 0.025,
-                        ),
-                        blurRadius: 14,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: corStatus.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(
-                          concluida
-                              ? Icons.south_west_rounded
-                              : Icons.receipt_long_outlined,
-                          color: corStatus,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _cliente(v),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: c.texto,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: corStatus.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                st,
-                                style: TextStyle(
-                                  color: corStatus,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _money(_valor(v)),
-                        style: TextStyle(
-                          color: concluida ? c.verde : c.texto,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+              ..._vendas.take(30).map(_movimentacaoCard),
           ],
         ],
       ),
     );
   }
-}
 
-class _FinCard extends StatelessWidget {
-  const _FinCard({
-    required this.titulo,
-    required this.valor,
-    required this.icon,
-    required this.cor,
-  });
+  Widget _infoDestaque(String titulo, String valor, Color cor, IconData icon) {
+    return Expanded(
+      child: Row(
+        children: [
+          Container(
+            width: 27,
+            height: 27,
+            decoration: BoxDecoration(
+              color: cor.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: cor, size: 13),
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  titulo,
+                  style: TextStyle(color: c.textoFraco, fontSize: 9),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  valor,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: cor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  final String titulo;
-  final String valor;
-  final IconData icon;
-  final Color cor;
+  Widget _movimentacaoCard(Map<String, dynamic> venda) {
+    final status = _status(venda);
+    final concluida = _concluida(venda);
+    final cancelada = status.toLowerCase().contains('cancel');
+    final corStatus = concluida
+        ? c.verde
+        : cancelada
+        ? c.vermelho
+        : c.amarelo;
+    final data = _dataVenda(venda);
 
-  @override
-  Widget build(BuildContext context) {
-    final c = context.cores;
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: c.gradCard,
-        borderRadius: BorderRadius.circular(19),
-        border: Border.all(color: cor.withValues(alpha: 0.16)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: c.bordaSutil),
         boxShadow: [
           BoxShadow(
-            color: cor.withValues(alpha: c.ehEscuro ? 0.07 : 0.035),
-            blurRadius: 15,
+            color: Colors.black.withValues(alpha: c.ehEscuro ? 0.07 : 0.025),
+            blurRadius: 14,
             offset: const Offset(0, 5),
           ),
         ],
@@ -426,13 +526,21 @@ class _FinCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 46,
+            height: 46,
             decoration: BoxDecoration(
-              color: cor.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(12),
+              color: corStatus.withValues(alpha: 0.11),
+              borderRadius: BorderRadius.circular(15),
             ),
-            child: Icon(icon, color: cor),
+            child: Icon(
+              concluida
+                  ? Icons.south_west_rounded
+                  : cancelada
+                  ? Icons.close_rounded
+                  : Icons.schedule_rounded,
+              color: corStatus,
+              size: 21,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -440,20 +548,85 @@ class _FinCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  titulo,
-                  style: TextStyle(color: c.textoSuave, fontSize: 12),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  valor,
+                  _cliente(venda),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: c.texto,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 17,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
                   ),
+                ),
+                const SizedBox(height: 7),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: corStatus.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: Text(
+                          status,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: corStatus,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (data != null) ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          data,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: c.textoFraco, fontSize: 9),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _money(_valor(venda)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: concluida
+                      ? c.verde
+                      : cancelada
+                      ? c.textoSuave
+                      : c.texto,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'VALOR',
+                style: TextStyle(
+                  color: c.textoFraco,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ],
           ),
         ],
       ),

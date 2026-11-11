@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'tema.dart';
 import 'api_service.dart';
@@ -199,7 +200,25 @@ class _AppShellState extends State<AppShell> {
                       color: c.superficie.withValues(alpha: 0.96),
                       border: Border(bottom: BorderSide(color: c.bordaSutil)),
                     ),
-                    child: Row(children: [const Spacer(), _botaoPerfil()]),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              'EASYSELL',
+                              style: GoogleFonts.montserrat(
+                                color: c.texto,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.8,
+                                height: 1,
+                              ),
+                            ),
+                          ),
+                        ),
+                        _botaoPerfil(),
+                      ],
+                    ),
                   ),
                   Expanded(child: body),
                 ],
@@ -542,7 +561,6 @@ class _SideNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.cores;
-    String? lastSection;
 
     return Container(
       width: 278,
@@ -564,30 +582,9 @@ class _SideNav extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      gradient: AppCores.gradRoxo,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: c.roxo.withValues(alpha: 0.24),
-                          blurRadius: 14,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.storefront_rounded,
-                      color: Colors.white,
-                      size: 23,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
                           'EasySell',
@@ -620,8 +617,8 @@ class _SideNav extends StatelessWidget {
                 itemCount: items.length,
                 itemBuilder: (context, i) {
                   final item = items[i];
-                  final showHeader = item.section != lastSection;
-                  lastSection = item.section;
+                  final showHeader =
+                      i == 0 || items[i - 1].section != item.section;
                   final selected = i == index;
 
                   return Column(
@@ -820,7 +817,6 @@ class _DrawerContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.cores;
-    String? lastSection;
     final nomeUsuario = ApiService.usuario?['name']?.toString().trim();
 
     return Column(
@@ -836,30 +832,9 @@ class _DrawerContent extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: AppCores.gradRoxo,
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(
-                      color: c.roxo.withValues(alpha: 0.24),
-                      blurRadius: 14,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.storefront_rounded,
-                  color: Colors.white,
-                  size: 23,
-                ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
                       'EasySell',
@@ -902,8 +877,7 @@ class _DrawerContent extends StatelessWidget {
             itemCount: items.length,
             itemBuilder: (context, i) {
               final item = items[i];
-              final showHeader = item.section != lastSection;
-              lastSection = item.section;
+              final showHeader = i == 0 || items[i - 1].section != item.section;
               final selected = i == index;
 
               return Column(

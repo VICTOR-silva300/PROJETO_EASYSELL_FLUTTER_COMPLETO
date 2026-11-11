@@ -46,420 +46,548 @@ class _EstoquePageState extends State<EstoquePage> {
     }
   }
 
-  int _qtd(Map<String, dynamic> p) {
-    final q = p['quantidade'] ?? p['stock'] ?? p['qtd'] ?? 0;
-    if (q is num) return q.toInt();
-    return int.tryParse('$q') ?? 0;
+  int _qtd(Map<String, dynamic> produto) {
+    final quantidade =
+        produto['quantidade'] ?? produto['stock'] ?? produto['qtd'] ?? 0;
+    if (quantidade is num) return quantidade.toInt();
+    return int.tryParse('$quantidade') ?? 0;
   }
 
-  String _nome(Map<String, dynamic> p) =>
-      (p['name'] ?? p['nome'] ?? 'Produto').toString();
+  String _nome(Map<String, dynamic> produto) =>
+      (produto['name'] ?? produto['nome'] ?? 'Produto').toString();
+
+  String _categoria(Map<String, dynamic> produto) =>
+      (produto['categoria'] ?? 'Outros').toString();
 
   List<Map<String, dynamic>> get _filtrados {
-    final q = _busca.trim().toLowerCase();
-    if (q.isEmpty) return _itens;
-    return _itens.where((p) => _nome(p).toLowerCase().contains(q)).toList();
+    final busca = _busca.trim().toLowerCase();
+    if (busca.isEmpty) return _itens;
+    return _itens.where((produto) {
+      return _nome(produto).toLowerCase().contains(busca) ||
+          _categoria(produto).toLowerCase().contains(busca);
+    }).toList();
   }
 
   int get _unidadesTotais =>
       _itens.fold(0, (total, produto) => total + _qtd(produto));
 
+  int get _estoqueBaixo =>
+      _itens.where((produto) => _qtd(produto) <= 10).length;
+
+  BoxDecoration _decoracaoCard({double raio = 24}) {
+    return BoxDecoration(
+      gradient: c.gradCard,
+      borderRadius: BorderRadius.circular(raio),
+      border: Border.all(color: c.bordaSutil),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final filtrados = _filtrados;
-    final baixos = _itens.where((p) => _qtd(p) <= 10).length;
+    final produtos = _filtrados;
 
-    return RefreshIndicator(
-      onRefresh: _carregar,
-      color: c.roxo,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: c.gradDestaque,
-              borderRadius: BorderRadius.circular(26),
-              border: Border.all(color: c.roxo.withValues(alpha: 0.18)),
-              boxShadow: [
-                BoxShadow(
-                  color: c.roxo.withValues(alpha: 0.08),
-                  blurRadius: 22,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    gradient: AppCores.gradRoxo,
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: c.roxo.withValues(alpha: 0.2),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.inventory_2_rounded,
-                    color: Colors.white,
-                    size: 25,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'CONTROLE DE PRODUTOS',
-                        style: TextStyle(
-                          color: c.textoFraco,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.15,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Estoque',
-                        style: TextStyle(
-                          color: c.texto,
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        'Acompanhe quantidades e reposições',
-                        style: TextStyle(color: c.textoSuave, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      tooltip: 'Atualizar estoque',
-                      onPressed: _loading ? null : _carregar,
-                      style: IconButton.styleFrom(
-                        foregroundColor: c.roxo,
-                        backgroundColor: c.superficie.withValues(alpha: 0.8),
-                        fixedSize: const Size(42, 42),
-                      ),
-                      icon: const Icon(Icons.refresh_rounded, size: 20),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 15),
-          Row(
-            children: [
-              Expanded(
-                child: _IndicadorEstoque(
-                  titulo: 'Produtos',
-                  valor: '${_itens.length}',
-                  icon: Icons.inventory_2_outlined,
-                  cor: c.roxo,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _IndicadorEstoque(
-                  titulo: 'Unidades',
-                  valor: '$_unidadesTotais',
-                  icon: Icons.widgets_outlined,
-                  cor: c.azul,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _IndicadorEstoque(
-                  titulo: 'Estoque baixo',
-                  valor: '$baixos',
-                  icon: Icons.warning_amber_rounded,
-                  cor: baixos > 0 ? c.vermelho : c.verde,
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: RefreshIndicator(
+        onRefresh: _carregar,
+        color: c.roxo,
+        child: SafeArea(
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(19, 15, 19, 40),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    _cabecalho(),
+                    const SizedBox(height: 27),
+                    _tituloPagina(),
+                    const SizedBox(height: 21),
+                    _resumo(),
+                    const SizedBox(height: 25),
+                    _barraPesquisa(),
+                    const SizedBox(height: 29),
+                    _tituloSecao(produtos.length),
+                    const SizedBox(height: 13),
+                    _conteudo(produtos),
+                    const SizedBox(height: 30),
+                  ]),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          TextField(
-            onChanged: (v) => setState(() => _busca = v),
-            decoration: InputDecoration(
-              hintText: 'Buscar produto por nome...',
-              prefixIcon: Icon(Icons.search_rounded, color: c.roxo),
-              filled: true,
-              fillColor: c.fundo2,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: BorderSide(color: c.bordaSutil),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: BorderSide(color: c.bordaSutil),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: BorderSide(color: c.roxo, width: 1.5),
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          if (!_loading && _erro == null)
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                gradient: c.gradCard,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: (baixos > 0 ? c.vermelho : c.verde).withValues(
-                    alpha: 0.25,
-                  ),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: (baixos > 0 ? c.vermelho : c.verde).withValues(
-                      alpha: c.ehEscuro ? 0.07 : 0.035,
-                    ),
-                    blurRadius: 15,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    baixos > 0
-                        ? Icons.warning_amber_rounded
-                        : Icons.check_circle_outline,
-                    color: baixos > 0 ? c.vermelho : c.verde,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      baixos > 0
-                          ? '$baixos produto(s) com 10 ou menos unidades'
-                          : 'Estoque saudável em todos os produtos',
-                      style: TextStyle(
-                        color: c.texto,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: 18),
-          if (!_loading && _erro == null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 11),
-              child: Text(
-                'PRODUTOS (${filtrados.length})',
-                style: TextStyle(
-                  color: c.textoFraco,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.1,
-                ),
-              ),
-            ),
-          if (_loading)
-            const Padding(
-              padding: EdgeInsets.only(top: 60),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (_erro != null)
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: c.vermelho.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: c.vermelho.withValues(alpha: 0.25)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline_rounded, color: c.vermelho),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(_erro!, style: TextStyle(color: c.texto)),
-                  ),
-                  IconButton(
-                    tooltip: 'Tentar novamente',
-                    onPressed: _carregar,
-                    icon: Icon(Icons.refresh_rounded, color: c.roxo),
-                  ),
-                ],
-              ),
-            )
-          else if (filtrados.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 40),
-              child: Center(
-                child: Text(
-                  'Nenhum produto encontrado',
-                  style: TextStyle(color: c.textoSuave),
-                ),
-              ),
-            )
-          else
-            ...filtrados.map((p) {
-              final qtd = _qtd(p);
-              final baixo = qtd <= 10;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 11),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: c.gradCard,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: baixo
-                        ? c.vermelho.withValues(alpha: 0.35)
-                        : c.bordaSutil,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: baixo
-                          ? c.vermelho.withValues(alpha: 0.045)
-                          : Colors.black.withValues(
-                              alpha: c.ehEscuro ? 0.08 : 0.025,
-                            ),
-                      blurRadius: 14,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: (baixo ? c.vermelho : c.roxo).withValues(
-                          alpha: 0.12,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        iconeCategoria((p['categoria'] ?? 'Outros').toString()),
-                        color: baixo ? c.vermelho : c.roxo,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _nome(p),
-                            style: TextStyle(
-                              color: c.texto,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            (p['categoria'] ?? 'Sem categoria').toString(),
-                            style: TextStyle(color: c.textoSuave, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '$qtd un.',
-                          style: TextStyle(
-                            color: baixo ? c.vermelho : c.texto,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16,
-                          ),
-                        ),
-                        if (baixo)
-                          Text(
-                            'Baixo',
-                            style: TextStyle(
-                              color: c.vermelho,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            }),
-        ],
+        ),
       ),
     );
   }
-}
 
-class _IndicadorEstoque extends StatelessWidget {
-  const _IndicadorEstoque({
-    required this.titulo,
-    required this.valor,
-    required this.icon,
-    required this.cor,
-  });
-
-  final String titulo;
-  final String valor;
-  final IconData icon;
-  final Color cor;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.cores;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 13),
-      decoration: BoxDecoration(
-        gradient: c.gradCard,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: cor.withValues(alpha: 0.16)),
-        boxShadow: [
-          BoxShadow(
-            color: cor.withValues(alpha: c.ehEscuro ? 0.06 : 0.03),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
+  Widget _cabecalho() {
+    return Row(
+      children: [
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            gradient: AppCores.gradRoxo,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: c.roxo.withValues(alpha: 0.22),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-        ],
-      ),
+          child: const Icon(
+            Icons.inventory_2_rounded,
+            color: Colors.white,
+            size: 24,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'GERENCIAMENTO',
+                style: TextStyle(
+                  color: c.textoFraco,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.4,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Estoque',
+                style: TextStyle(
+                  color: c.texto,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+        GestureDetector(
+          onTap: _loading ? null : _carregar,
+          child: Container(
+            width: 43,
+            height: 43,
+            decoration: BoxDecoration(
+              color: c.superficie,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: c.bordaMedia),
+            ),
+            child: Icon(
+              Icons.refresh_rounded,
+              color: _loading ? c.textoFraco : c.texto,
+              size: 20,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _tituloPagina() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Seu estoque 📦',
+          style: TextStyle(
+            color: c.texto,
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.7,
+          ),
+        ),
+        const SizedBox(height: 7),
+        Text(
+          'Acompanhe quantidades e reposições dos seus produtos.',
+          style: TextStyle(color: c.textoSuave, fontSize: 12),
+        ),
+        const SizedBox(height: 15),
+        Container(
+          width: 44,
+          height: 4,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [c.roxo, c.roxoClaro]),
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _resumo() {
+    return Row(
+      children: [
+        Expanded(
+          child: _cardResumo(
+            icon: Icons.inventory_2_outlined,
+            titulo: 'Produtos',
+            valor: '${_itens.length}',
+            detalhe: 'TOTAL',
+            cor: c.roxoClaro,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _cardResumo(
+            icon: Icons.widgets_outlined,
+            titulo: 'Unidades',
+            valor: '$_unidadesTotais',
+            detalhe: 'EM ESTOQUE',
+            cor: c.azul,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _cardResumo(
+            icon: Icons.warning_amber_rounded,
+            titulo: 'Estoque baixo',
+            valor: '$_estoqueBaixo',
+            detalhe: 'ATENÇÃO',
+            cor: _estoqueBaixo > 0 ? c.vermelho : c.verde,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _cardResumo({
+    required IconData icon,
+    required String titulo,
+    required String valor,
+    required String detalhe,
+    required Color cor,
+  }) {
+    return Container(
+      height: 133,
+      padding: const EdgeInsets.all(13),
+      decoration: _decoracaoCard(raio: 21),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: cor, size: 18),
-          const SizedBox(height: 9),
+          Row(
+            children: [
+              Container(
+                width: 37,
+                height: 37,
+                decoration: BoxDecoration(
+                  color: cor.withValues(alpha: 0.11),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: cor, size: 18),
+              ),
+              const Spacer(),
+              Icon(Icons.arrow_upward_rounded, color: cor, size: 13),
+            ],
+          ),
+          const Spacer(),
           Text(
             valor,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: c.texto,
-              fontSize: 19,
+              fontSize: 21,
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 3),
-          Text(
-            titulo,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: c.textoSuave, fontSize: 9),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  titulo,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: c.textoSuave, fontSize: 9),
+                ),
+              ),
+              const SizedBox(width: 3),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                decoration: BoxDecoration(
+                  color: cor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  detalhe,
+                  style: TextStyle(
+                    color: cor,
+                    fontSize: 7,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _barraPesquisa() {
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 15),
+      decoration: BoxDecoration(
+        color: c.superficie,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: c.bordaMedia),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.search_rounded, color: c.textoFraco, size: 21),
+          const SizedBox(width: 11),
+          Expanded(
+            child: TextField(
+              onChanged: (valor) => setState(() => _busca = valor),
+              style: TextStyle(color: c.texto, fontSize: 12),
+              cursorColor: c.roxoClaro,
+              decoration: InputDecoration(
+                hintText: 'Pesquisar produto...',
+                hintStyle: TextStyle(color: c.textoFraco, fontSize: 12),
+                border: InputBorder.none,
+                isDense: true,
+              ),
+            ),
+          ),
+          if (_busca.isNotEmpty)
+            GestureDetector(
+              onTap: () => setState(() => _busca = ''),
+              child: Icon(Icons.close_rounded, color: c.textoSuave, size: 19),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tituloSecao(int quantidade) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Container(
+          width: 4,
+          height: 34,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [c.roxoClaro, c.roxo]),
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Estoque',
+                style: TextStyle(
+                  color: c.texto,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$quantidade produtos encontrados',
+                style: TextStyle(color: c.textoFraco, fontSize: 10),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: c.roxoClaro, shape: BoxShape.circle),
+        ),
+      ],
+    );
+  }
+
+  Widget _conteudo(List<Map<String, dynamic>> produtos) {
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 50),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_erro != null) {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: c.vermelho.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: c.vermelho.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline_rounded, color: c.vermelho),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(_erro!, style: TextStyle(color: c.texto)),
+            ),
+            IconButton(
+              tooltip: 'Tentar novamente',
+              onPressed: _carregar,
+              icon: Icon(Icons.refresh_rounded, color: c.roxo),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (produtos.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(30),
+        decoration: _decoracaoCard(),
+        child: Column(
+          children: [
+            Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                color: c.roxoClaro.withValues(alpha: 0.11),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(
+                Icons.search_off_rounded,
+                color: c.roxoClaro,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 15),
+            Text(
+              'Nenhum produto encontrado',
+              style: TextStyle(
+                color: c.texto,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Tente pesquisar outro produto.',
+              style: TextStyle(color: c.textoSuave, fontSize: 10),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      decoration: _decoracaoCard(),
+      child: Column(
+        children: [
+          for (var i = 0; i < produtos.length; i++) ...[
+            _produtoCard(produtos[i]),
+            if (i != produtos.length - 1) _divisor(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _produtoCard(Map<String, dynamic> produto) {
+    final quantidade = _qtd(produto);
+    final baixo = quantidade <= 10;
+    final categoria = _categoria(produto);
+    final cor = baixo ? c.vermelho : c.roxoClaro;
+    final icone = iconeCategoria(categoria);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: cor.withValues(alpha: 0.11),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: cor.withValues(alpha: 0.15)),
+            ),
+            child: Icon(icone, color: cor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _nome(produto),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: c.texto,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Row(
+                  children: [
+                    Icon(icone, color: cor, size: 12),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        categoria,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: c.textoFraco, fontSize: 9),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '$quantidade un.',
+                style: TextStyle(
+                  color: baixo ? c.vermelho : c.texto,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: cor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  baixo ? 'BAIXO' : 'DISPONÍVEL',
+                  style: TextStyle(
+                    color: cor,
+                    fontSize: 7,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _divisor() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 15),
+      child: Container(height: 1, color: c.bordaSutil),
     );
   }
 }

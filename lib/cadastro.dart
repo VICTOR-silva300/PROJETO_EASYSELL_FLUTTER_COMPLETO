@@ -156,48 +156,59 @@ class _CadastroState extends State<Cadastro> {
                   final desktop = constraints.maxWidth >= 1100;
 
                   if (desktop) {
-                    return Center(
+                    return SingleChildScrollView(
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1600),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 4,
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.fromLTRB(
-                                  40,
-                                  35,
-                                  20,
-                                  35,
-                                ),
-                                child: _apresentacao(),
-                              ),
-                            ),
-                            Expanded(
-                              flex: 5,
-                              child: Center(
-                                child: SingleChildScrollView(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 28,
-                                    horizontal: 16,
-                                  ),
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 490,
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1600),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  flex: 4,
+                                  child: Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      40,
+                                      35,
+                                      20,
+                                      35,
                                     ),
-                                    child: _formulario(),
+                                    child: _apresentacao(),
                                   ),
                                 ),
-                              ),
+                                Expanded(
+                                  flex: 5,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 28,
+                                      horizontal: 16,
+                                    ),
+                                    child: Center(
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 490,
+                                        ),
+                                        child: _formulario(),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 4,
+                                  child: SizedBox(
+                                    height: constraints.maxHeight,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(24),
+                                      child: Center(child: _ilustracao()),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            Expanded(
-                              flex: 4,
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.all(24),
-                                child: _ilustracao(),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     );
@@ -234,27 +245,29 @@ class _CadastroState extends State<Cadastro> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          width: 43,
-          height: 43,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [azul, roxo],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(13),
+            color: const Color(0xFF2563EB),
+            borderRadius: BorderRadius.circular(14),
             boxShadow: [
-              BoxShadow(color: roxo.withValues(alpha: 0.3), blurRadius: 20),
+              BoxShadow(
+                color: const Color(0xFF2563EB).withValues(alpha: 0.28),
+                blurRadius: 18,
+                offset: const Offset(0, 7),
+              ),
             ],
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: const Center(
             child: Text(
               'E',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 27,
+                fontSize: 30,
                 fontWeight: FontWeight.w900,
                 fontStyle: FontStyle.italic,
+                height: 1,
               ),
             ),
           ),
@@ -810,142 +823,50 @@ class _CadastroState extends State<Cadastro> {
   }
 
   Widget _ilustracao() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        SizedBox(
-          height: 300,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 230,
-                height: 230,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      roxo.withValues(alpha: 0.24),
-                      azul.withValues(alpha: 0.07),
-                      Colors.transparent,
-                    ],
-                  ),
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text.rich(
+            TextSpan(
+              style: TextStyle(
+                color: texto,
+                fontSize: 31,
+                height: 1.25,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.8,
+              ),
+              children: [
+                const TextSpan(
+                  text: 'Seu próximo grande\nresultado começa com\n',
                 ),
-              ),
-              Transform.rotate(
-                angle: -0.09,
-                child: Container(
-                  width: 260,
-                  height: 220,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xDD172452), Color(0xCC0C1330)],
-                    ),
-                    borderRadius: BorderRadius.circular(25),
-                    border: Border.all(color: const Color(0xFF2563EB)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: azul.withValues(alpha: 0.15),
-                        blurRadius: 30,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.auto_graph_rounded,
-                            color: Color(0xFF60A5FA),
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            'Seu crescimento',
-                            style: TextStyle(
-                              color: texto,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 22),
-                      SizedBox(
-                        height: 105,
-                        child: CustomPaint(
-                          painter: _GraficoPainter(),
-                          child: const SizedBox.expand(),
-                        ),
-                      ),
-                      const Spacer(),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.trending_up_rounded,
-                            color: Color(0xFF35D6A0),
-                            size: 17,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'Evolua com inteligência',
-                            style: TextStyle(color: textoSuave, fontSize: 10),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                TextSpan(
+                  text: 'um novo começo.',
+                  style: TextStyle(color: azul, fontWeight: FontWeight.w900),
                 ),
-              ),
-              Positioned(
-                top: 12,
-                right: 15,
-                child: _miniCard(Icons.bolt_rounded, azul),
-              ),
-              Positioned(
-                bottom: 8,
-                left: 12,
-                child: _miniCard(Icons.inventory_2_outlined, roxo),
-              ),
-            ],
+              ],
+            ),
+            textAlign: TextAlign.center,
           ),
-        ),
-        const SizedBox(height: 25),
-        Text(
-          'Grandes resultados\ncomeçam com um novo começo.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: azul,
-            fontSize: 19,
-            height: 1.5,
-            fontStyle: FontStyle.italic,
-            fontWeight: FontWeight.w600,
+          const SizedBox(height: 18),
+          Container(
+            width: 72,
+            height: 4,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [azul, roxo]),
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-        ),
-        const SizedBox(height: 25),
-        _rodapeSeguro(),
-      ],
-    );
-  }
-
-  Widget _miniCard(IconData icon, Color cor) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [cor.withValues(alpha: 0.45), const Color(0xFF111936)],
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cor.withValues(alpha: 0.6)),
-        boxShadow: [
-          BoxShadow(color: cor.withValues(alpha: 0.15), blurRadius: 18),
+          const SizedBox(height: 20),
+          Text(
+            'Organize seu negócio e acompanhe cada conquista em um só lugar.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: textoSuave, fontSize: 14, height: 1.7),
+          ),
+          const SizedBox(height: 32),
+          _rodapeSeguro(),
         ],
       ),
-      child: Icon(icon, color: Colors.white, size: 23),
     );
   }
 
@@ -965,15 +886,15 @@ class _CadastroState extends State<Cadastro> {
         children: [
           Icon(
             Icons.verified_user_outlined,
-            color: Color(0xFF35D6A0),
+            color: const Color(0xFF35D6A0),
             size: 17,
           ),
-          SizedBox(width: 9),
+          const SizedBox(width: 9),
           Flexible(
             child: Text(
               'Ambiente seguro e protegido',
               style: TextStyle(
-                color: textoSuave,
+                color: Colors.white.withValues(alpha: 0.78),
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -1115,74 +1036,6 @@ class _FundoPainter extends CustomPainter {
       );
 
     canvas.drawPath(caminho2, linha);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _GraficoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final grade = Paint()
-      ..color = const Color(0xFF35416D).withValues(alpha: 0.45)
-      ..strokeWidth = 0.7;
-
-    for (int i = 0; i < 4; i++) {
-      final y = i * size.height / 3;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), grade);
-    }
-
-    final pontos = [
-      Offset(0, size.height * 0.83),
-      Offset(size.width * 0.18, size.height * 0.66),
-      Offset(size.width * 0.35, size.height * 0.73),
-      Offset(size.width * 0.52, size.height * 0.38),
-      Offset(size.width * 0.68, size.height * 0.46),
-      Offset(size.width * 0.84, size.height * 0.18),
-      Offset(size.width, size.height * 0.08),
-    ];
-
-    final caminho = Path()..moveTo(pontos.first.dx, pontos.first.dy);
-
-    for (int i = 1; i < pontos.length; i++) {
-      caminho.lineTo(pontos[i].dx, pontos[i].dy);
-    }
-
-    final area = Path.from(caminho)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-
-    final preenchimento = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Color(0x553F6BFF), Color(0x001E38A0)],
-      ).createShader(Offset.zero & size);
-
-    canvas.drawPath(area, preenchimento);
-
-    final linha = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..shader = LinearGradient(
-        colors: [Color(0xFF60A5FA), Color(0xFF1D4ED8)],
-      ).createShader(Offset.zero & size);
-
-    canvas.drawPath(caminho, linha);
-
-    final ponta = pontos.last;
-
-    canvas.drawCircle(ponta, 5, Paint()..color = const Color(0xFF60A5FA));
-
-    canvas.drawCircle(
-      ponta,
-      9,
-      Paint()..color = const Color(0xFF60A5FA).withValues(alpha: 0.22),
-    );
   }
 
   @override

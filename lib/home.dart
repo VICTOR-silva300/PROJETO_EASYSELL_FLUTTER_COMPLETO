@@ -498,6 +498,23 @@ class _DashboardHomeState extends State<DashboardHome> {
     return !data.isBefore(inicioSemana) && data.isBefore(inicioProximaSemana);
   }
 
+  bool _semanaPassada(dynamic valor) {
+    final data = _dataVenda(valor);
+    if (data == null) return false;
+
+    final agora = DateTime.now();
+    final hoje = DateTime(agora.year, agora.month, agora.day);
+    final inicioSemanaAtual = hoje.subtract(
+      Duration(days: hoje.weekday - DateTime.monday),
+    );
+    final inicioSemanaPassada = inicioSemanaAtual.subtract(
+      const Duration(days: 7),
+    );
+
+    return !data.isBefore(inicioSemanaPassada) &&
+        data.isBefore(inicioSemanaAtual);
+  }
+
   double get _faturamentoTotal {
     return _vendas
         .where((v) => _vendaConcluida(v) && _mesAtual(v['createdAt']))
@@ -513,6 +530,12 @@ class _DashboardHomeState extends State<DashboardHome> {
   double get _faturamentoSemana {
     return _vendas
         .where((v) => _vendaConcluida(v) && _semanaAtual(v['createdAt']))
+        .fold(0.0, (total, venda) => total + _numero(venda['Preco_gasto']));
+  }
+
+  double get _faturamentoSemanaPassada {
+    return _vendas
+        .where((v) => _vendaConcluida(v) && _semanaPassada(v['createdAt']))
         .fold(0.0, (total, venda) => total + _numero(venda['Preco_gasto']));
   }
 
@@ -844,6 +867,13 @@ class _DashboardHomeState extends State<DashboardHome> {
                 _dinheiro(_faturamentoSemana),
                 cores.azul,
                 Icons.date_range_rounded,
+              ),
+              _faturamentoInfo(
+                cores,
+                'Semana passada',
+                _dinheiro(_faturamentoSemanaPassada),
+                cores.roxoClaro,
+                Icons.history_rounded,
               ),
             ],
           ),
