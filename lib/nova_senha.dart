@@ -47,13 +47,13 @@ class _NovaSenhaState extends State<NovaSenha> {
     final senha = senhaController.text;
     final confirmar = confirmarController.text;
 
-    if (codigo.length != 6 || int.tryParse(codigo) == null) {
-      aviso('Digite o código de 6 números recebido no e-mail.');
+    if (codigo.length != 8 || int.tryParse(codigo) == null) {
+      aviso('Digite o código de 8 números recebido no e-mail.');
       return;
     }
 
-    if (senha.length < 8) {
-      aviso('A nova senha precisa ter pelo menos 8 caracteres.');
+    if (senha.length < 6) {
+      aviso('A senha precisa ter pelo menos 6 caracteres.');
       return;
     }
 
@@ -155,7 +155,7 @@ class _NovaSenhaState extends State<NovaSenha> {
                     ),
                     const SizedBox(height: 9),
                     Text(
-                      'Digite o código de 6 números enviado para ${widget.email} e escolha uma senha com pelo menos 8 caracteres.',
+                      'Digite o código enviado para ${widget.email} e escolha uma nova senha.',
                       style: TextStyle(
                         color: c.textoSuave,
                         fontSize: 13,
@@ -174,14 +174,14 @@ class _NovaSenhaState extends State<NovaSenha> {
                     TextField(
                       controller: codigoController,
                       keyboardType: TextInputType.number,
-                      maxLength: 6,
+                      maxLength: 8,
                       style: TextStyle(
                         color: c.texto,
                         letterSpacing: 5,
                         fontWeight: FontWeight.w800,
                       ),
                       decoration: decoracao(
-                        '000000',
+                        '00000000',
                         Icons.verified_user_outlined,
                       ).copyWith(counterText: ''),
                     ),
@@ -199,7 +199,7 @@ class _NovaSenhaState extends State<NovaSenha> {
                       obscureText: !mostrarSenha,
                       style: TextStyle(color: c.texto),
                       decoration: decoracao(
-                        'Mínimo de 8 caracteres',
+                        'Mínimo de 6 caracteres',
                         Icons.lock_outline_rounded,
                         suffix: IconButton(
                           onPressed: () =>

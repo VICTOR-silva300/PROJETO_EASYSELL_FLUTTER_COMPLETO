@@ -103,11 +103,9 @@ class _CadastroState extends State<Cadastro> {
     if (carregando) return;
 
     setState(() => carregando = true);
-    var contaCriada = false;
 
     try {
       await ApiService.register(nome, email, senha);
-      contaCriada = true;
       await ApiService.login(email, senha);
 
       if (!mounted) return;
@@ -119,19 +117,7 @@ class _CadastroState extends State<Cadastro> {
       );
     } catch (e) {
       if (!mounted) return;
-      final erro = e.toString().replaceFirst('Exception: ', '');
-      final erroAmigavel = erro.toLowerCase().contains('internal server error')
-          ? 'O servidor da EasySell apresentou um erro interno (500) e não '
-                'confirmou o cadastro. Tente novamente mais tarde ou peça ao '
-                'suporte para verificar os logs da API.'
-          : erro;
-      aviso(
-        contaCriada
-            ? 'A conta foi criada, mas o login automático falhou: '
-                  '$erroAmigavel. '
-                  'Volte ao login e entre com seu e-mail e senha.'
-            : erroAmigavel,
-      );
+      aviso(e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) {
         setState(() => carregando = false);

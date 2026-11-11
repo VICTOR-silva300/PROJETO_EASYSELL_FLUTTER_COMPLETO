@@ -91,20 +91,11 @@ class ApiService {
     String email,
     String password,
   ) async {
-    late final http.Response response;
-    try {
-      response = await http
-          .post(
-            Uri.parse('$baseUrl/auth/login'),
-            headers: _headers,
-            body: jsonEncode({'email': email, 'password': password}),
-          )
-          .timeout(const Duration(seconds: 45));
-    } on TimeoutException {
-      throw Exception(
-        'O servidor demorou para responder ao login. Tente novamente.',
-      );
-    }
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/login'),
+      headers: _headers,
+      body: jsonEncode({'email': email, 'password': password}),
+    );
 
     final data = _map(_json(response));
 
@@ -156,7 +147,7 @@ class ApiService {
           body: jsonEncode({
             'email': email.trim(),
             'code': codigo.trim(),
-            'password': novaSenha,
+            'newPassword': novaSenha,
           }),
         )
         .timeout(const Duration(seconds: 25));
@@ -197,31 +188,23 @@ class ApiService {
     String email,
     String password,
   ) async {
-    late final http.Response response;
-    try {
-      response = await http
-          .post(
-            Uri.parse('$baseUrl/user'),
-            headers: _headers,
-            body: jsonEncode({
-              'name': name.trim(),
-              'email': email.trim(),
-              'password': password,
-              'role': 'administrador',
-            }),
-          )
-          .timeout(const Duration(seconds: 45));
-    } on TimeoutException {
-      throw Exception(
-        'O servidor não respondeu ao cadastro em 45 segundos. '
-        'Nenhuma confirmação de criação foi recebida.',
-      );
-    }
+    final response = await http.post(
+      Uri.parse('$baseUrl/user'),
+      headers: _headers,
+      body: jsonEncode({
+        'name': name,
+        'email': email,
+        'password': password,
+        'role': 'administrador',
+      }),
+    );
 
     final data = _map(_json(response));
 
-    if (response.statusCode != 201) {
-      throw Exception('A API não confirmou a criação da conta.');
+    final id = data['_id']?.toString();
+
+    if (id != null && id.isNotEmpty) {
+      await bootstrapCompany(id, name);
     }
 
     return data;
