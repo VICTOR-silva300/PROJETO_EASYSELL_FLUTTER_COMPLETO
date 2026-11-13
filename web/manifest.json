@@ -1,11 +1,11 @@
 {
-    "name": "frontend_easysell",
-    "short_name": "frontend_easysell",
+    "name": "EASYSELL - Gestão Inteligente",
+    "short_name": "EASYSELL",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Gestão inteligente para o seu negócio.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -15,6 +15,7 @@ class EasySellApp extends StatelessWidget {
       valueListenable: AppTema.modo,
       builder: (context, modo, _) {
         return MaterialApp(
+          title: 'EASYSELL | Gestão Inteligente',
           debugShowCheckedModeBanner: false,
           themeMode: modo,
           theme: AppTema.temaClaro,
