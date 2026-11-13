@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api_service.dart';
+import 'categorias_empresa.dart';
 import 'tema.dart';
 
 class EmpresaPage extends StatefulWidget {
@@ -11,30 +12,6 @@ class EmpresaPage extends StatefulWidget {
 }
 
 class _EmpresaPageState extends State<EmpresaPage> {
-  static const List<String> _categoriasDisponiveis = [
-    'Alimentação e bebidas',
-    'Agronegócio',
-    'Automotivo',
-    'Beleza e estética',
-    'Casa e decoração',
-    'Comércio varejista',
-    'Construção e materiais',
-    'Consultoria',
-    'Educação',
-    'Esportes e lazer',
-    'Farmácia e saúde',
-    'Financeiro',
-    'Indústria',
-    'Marketing e comunicação',
-    'Moda e vestuário',
-    'Pet shop e veterinária',
-    'Tecnologia',
-    'Transporte e logística',
-    'Turismo e hotelaria',
-    'Serviços',
-    'Outro',
-  ];
-
   bool _loading = true;
   String? _erro;
   Map<String, dynamic>? _empresa;
@@ -49,10 +26,10 @@ class _EmpresaPageState extends State<EmpresaPage> {
 
   List<String> get _opcoesCategoria {
     final atual = _categoriaCtrl.text.trim();
-    if (atual.isEmpty || _categoriasDisponiveis.contains(atual)) {
-      return _categoriasDisponiveis;
+    if (atual.isEmpty || categoriasEmpresa.contains(atual)) {
+      return categoriasEmpresa;
     }
-    return [..._categoriasDisponiveis, atual];
+    return [...categoriasEmpresa, atual];
   }
 
   @override
@@ -114,13 +91,12 @@ class _EmpresaPageState extends State<EmpresaPage> {
     }
     setState(() => _salvando = true);
     try {
-      if (ApiService.companyId == null || ApiService.companyId!.isEmpty) {
-        // bootstrap já cria empresa básica no login; tenta atualizar via user
-        await ApiService.bootstrapCompany(ApiService.userId ?? '', nome);
-      }
       final empresaId = ApiService.companyId;
       if (empresaId == null || empresaId.isEmpty) {
-        throw Exception('Não foi possível identificar a empresa para salvar.');
+        throw Exception(
+          'Esta conta ainda não tem uma empresa vinculada. Conclua o cadastro '
+          'da empresa para continuar.',
+        );
       }
 
       await ApiService.atualizarEmpresa(

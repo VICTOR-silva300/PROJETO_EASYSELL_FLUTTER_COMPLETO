@@ -25,6 +25,35 @@ class ApiService {
     };
   }
 
+  static Future<T> _withRetry<T>(
+    Future<T> Function() request, {
+    int maxTentativas = 3,
+  }) async {
+    for (var tentativa = 1; tentativa <= maxTentativas; tentativa++) {
+      try {
+        return await request().timeout(const Duration(seconds: 30));
+      } on TimeoutException {
+        if (tentativa == maxTentativas) rethrow;
+      } catch (error) {
+        final mensagem = error.toString().toLowerCase();
+        final ehRecuperavel = mensagem.contains('client failed to fetch') ||
+            mensagem.contains('failed host lookup') ||
+            mensagem.contains('connection refused') ||
+            mensagem.contains('connection reset by peer') ||
+            mensagem.contains('socketexception') ||
+            mensagem.contains('timed out');
+
+        if (!ehRecuperavel || tentativa == maxTentativas) {
+          rethrow;
+        }
+      }
+
+      await Future.delayed(Duration(seconds: tentativa));
+    }
+
+    throw Exception('Falha ao conectar com a API.');
+  }
+
   static dynamic _json(http.Response response) {
     dynamic body;
 
@@ -89,12 +118,15 @@ class ApiService {
 
   static Future<Map<String, dynamic>> login(
     String email,
-    String password,
-  ) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/login'),
-      headers: _headers,
-      body: jsonEncode({'email': email, 'password': password}),
+    String password, {
+    bool permitirEmpresaAusente = false,
+  }) async {
+    final response = await _withRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/auth/login'),
+        headers: _headers,
+        body: jsonEncode({'email': email, 'password': password}),
+      ),
     );
 
     final data = _map(_json(response));
@@ -107,30 +139,32 @@ class ApiService {
 
     usuario = Map<String, dynamic>.from(data);
 
-    if ((companyId == null || companyId!.isEmpty) && userId != null) {
-      final company = await bootstrapCompany(
-        userId!,
-        data['name']?.toString() ?? 'Minha Empresa',
-      );
-      companyId = _idFrom(company['_id'] ?? company['id']);
-      usuario = {...?usuario, 'empresaId': companyId};
-    }
-
     try {
       await me();
     } catch (_) {}
+
+    if (companyId == null || companyId!.isEmpty) {
+      if (permitirEmpresaAusente) {
+        return {...data, ...?usuario};
+      }
+      logout();
+      throw Exception(
+        'Esta conta ainda não tem uma empresa vinculada. Conclua o cadastro '
+        'da empresa ou fale com o suporte.',
+      );
+    }
 
     return {...data, ...?usuario};
   }
 
   static Future<void> solicitarRecuperacaoSenha(String email) async {
-    final response = await http
-        .post(
-          Uri.parse('$baseUrl/auth/forgot-password'),
-          headers: _headers,
-          body: jsonEncode({'email': email.trim()}),
-        )
-        .timeout(const Duration(seconds: 25));
+    final response = await _withRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/auth/forgot-password'),
+        headers: _headers,
+        body: jsonEncode({'email': email.trim()}),
+      ),
+    );
 
     _json(response);
   }
@@ -140,25 +174,27 @@ class ApiService {
     required String codigo,
     required String novaSenha,
   }) async {
-    final response = await http
-        .post(
-          Uri.parse('$baseUrl/auth/reset-password'),
-          headers: _headers,
-          body: jsonEncode({
-            'email': email.trim(),
-            'code': codigo.trim(),
-            'newPassword': novaSenha,
-          }),
-        )
-        .timeout(const Duration(seconds: 25));
+    final response = await _withRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/auth/reset-password'),
+        headers: _headers,
+        body: jsonEncode({
+          'email': email.trim(),
+          'code': codigo.trim(),
+          'password': novaSenha,
+        }),
+      ),
+    );
 
     _json(response);
   }
 
   static Future<Map<String, dynamic>> me() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/auth/me'),
-      headers: _headers,
+    final response = await _withRetry(
+      () => http.get(
+        Uri.parse('$baseUrl/auth/me'),
+        headers: _headers,
+      ),
     );
 
     final data = _map(_json(response));
@@ -186,25 +222,58 @@ class ApiService {
   static Future<Map<String, dynamic>> register(
     String name,
     String email,
-    String password,
-  ) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/user'),
-      headers: _headers,
-      body: jsonEncode({
-        'name': name,
-        'email': email,
-        'password': password,
-        'role': 'administrador',
-      }),
+    String password, {
+    required String nomeEmpresa,
+    required String categoria,
+    required String cnpj,
+    required String cpfResponsavel,
+  }) async {
+    final response = await _withRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/user'),
+        headers: _headers,
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'password': password,
+          'role': 'administrador',
+        }),
+      ),
     );
 
-    final data = _map(_json(response));
+    late final Map<String, dynamic> data;
+    try {
+      data = _map(_json(response));
+    } catch (error) {
+      throw Exception(
+        'Falha ao criar o usuário (HTTP ${response.statusCode}): '
+        '${error.toString().replaceFirst('Exception: ', '')}',
+      );
+    }
 
-    final id = data['_id']?.toString();
+    final id = _idFrom(data) ?? _idFrom(data['user']) ?? _idFrom(data['usuario']);
 
-    if (id != null && id.isNotEmpty) {
-      await bootstrapCompany(id, name);
+    if (id == null || id.isEmpty) {
+      throw Exception(
+        'A API criou a conta, mas não retornou o identificador do usuário. '
+        'Verifique a resposta da criação e tente novamente.',
+      );
+    }
+
+    try {
+      await bootstrapCompany(
+        id,
+        nomeEmpresa,
+        categoria: categoria,
+        cnpj: cnpj,
+        cpfResponsavel: cpfResponsavel,
+      );
+    } catch (error) {
+      throw Exception(
+        'A conta foi criada, mas não foi possível cadastrar a empresa. '
+        'Não tente cadastrar novamente com o mesmo e-mail; entre em contato '
+        'com o suporte. Detalhe: ${error.toString().replaceFirst('Exception: ', '')}',
+      );
     }
 
     return data;
@@ -212,27 +281,39 @@ class ApiService {
 
   static Future<Map<String, dynamic>> bootstrapCompany(
     String id,
-    String name,
-  ) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/company/bootstrap/$id'),
-      headers: _headers,
-      body: jsonEncode({'name': name}),
+    String name, {
+    required String categoria,
+    required String cnpj,
+    required String cpfResponsavel,
+  }) async {
+    final response = await _withRetry(
+      () => http.post(
+        Uri.parse('$baseUrl/company/bootstrap/$id'),
+        headers: _headers,
+        body: jsonEncode({
+          'name': name.trim(),
+          'categoria': categoria.trim(),
+          'cnpj': _somenteNumeros(cnpj),
+          'cpfResponsavel': _somenteNumeros(cpfResponsavel),
+        }),
+      ),
     );
 
     final data = _map(_json(response));
 
-    companyId = data['_id']?.toString();
+    companyId = _idFrom(data) ?? _idFrom(data['empresa']) ?? _idFrom(data['company']);
 
     if (token != null &&
         token!.isNotEmpty &&
         id == userId &&
         companyId != null) {
       try {
-        final updateResponse = await http.patch(
-          Uri.parse('$baseUrl/user/$id'),
-          headers: _headers,
-          body: jsonEncode({'company': companyId}),
+        final updateResponse = await _withRetry(
+          () => http.patch(
+            Uri.parse('$baseUrl/user/$id'),
+            headers: _headers,
+            body: jsonEncode({'company': companyId}),
+          ),
         );
 
         if (updateResponse.statusCode >= 200 &&

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'tema.dart';
 import 'api_service.dart';
@@ -1528,7 +1529,12 @@ class _EquipeState extends State<Equipe> {
     salvar,
   }) {
     final nomeController = TextEditingController(text: nomeInicial);
-    final cpfController = TextEditingController(text: cpfInicial);
+    final cpfInicialNumerico = cpfInicial.replaceAll(RegExp(r'\D'), '');
+    final cpfController = TextEditingController(
+      text: cpfInicialNumerico.length > 11
+          ? cpfInicialNumerico.substring(0, 11)
+          : cpfInicialNumerico,
+    );
     String cargoSel = cargoInicial;
     String statusSel = statusInicial;
     String? erro;
@@ -1558,6 +1564,11 @@ class _EquipeState extends State<Equipe> {
                 'Somente números',
                 Icons.badge_outlined,
                 teclado: TextInputType.number,
+                formatadores: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(11),
+                ],
+                maxLength: 11,
               ),
               if (erro != null) ...[
                 const SizedBox(height: 8),
@@ -1679,16 +1690,36 @@ class _EquipeState extends State<Equipe> {
     String hint,
     IconData icon, {
     TextInputType? teclado,
+    List<TextInputFormatter>? formatadores,
+    int? maxLength,
   }) {
     return TextField(
       controller: controller,
       keyboardType: teclado,
+      inputFormatters: formatadores,
+      maxLength: maxLength,
+      maxLengthEnforcement: MaxLengthEnforcement.enforced,
+      onChanged: maxLength == null
+          ? null
+          : (valor) {
+              final numeros = valor.replaceAll(RegExp(r'\D'), '');
+              final limitado = numeros.length > maxLength
+                  ? numeros.substring(0, maxLength)
+                  : numeros;
+              if (limitado != valor) {
+                controller.value = TextEditingValue(
+                  text: limitado,
+                  selection: TextSelection.collapsed(offset: limitado.length),
+                );
+              }
+            },
       cursorColor: c.roxoClaro,
       style: TextStyle(color: c.texto, fontSize: 13),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: c.textoFraco, fontSize: 12),
         prefixIcon: Icon(icon, color: c.roxoClaro, size: 19),
+        counterText: maxLength == null ? null : '',
         filled: true,
         fillColor: c.fundo2,
         contentPadding: const EdgeInsets.symmetric(vertical: 16),

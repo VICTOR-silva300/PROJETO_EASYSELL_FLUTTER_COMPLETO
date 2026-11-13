@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'api_service.dart';
 import 'tema.dart';
@@ -47,13 +48,13 @@ class _NovaSenhaState extends State<NovaSenha> {
     final senha = senhaController.text;
     final confirmar = confirmarController.text;
 
-    if (codigo.length != 8 || int.tryParse(codigo) == null) {
-      aviso('Digite o código de 8 números recebido no e-mail.');
+    if (codigo.length != 6 || int.tryParse(codigo) == null) {
+      aviso('Digite o código de 6 números recebido no e-mail.');
       return;
     }
 
-    if (senha.length < 6) {
-      aviso('A senha precisa ter pelo menos 6 caracteres.');
+    if (senha.length < 8) {
+      aviso('A senha precisa ter pelo menos 8 caracteres.');
       return;
     }
 
@@ -174,14 +175,17 @@ class _NovaSenhaState extends State<NovaSenha> {
                     TextField(
                       controller: codigoController,
                       keyboardType: TextInputType.number,
-                      maxLength: 8,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
+                      maxLength: 6,
                       style: TextStyle(
                         color: c.texto,
                         letterSpacing: 5,
                         fontWeight: FontWeight.w800,
                       ),
                       decoration: decoracao(
-                        '00000000',
+                        '000000',
                         Icons.verified_user_outlined,
                       ).copyWith(counterText: ''),
                     ),
@@ -199,7 +203,7 @@ class _NovaSenhaState extends State<NovaSenha> {
                       obscureText: !mostrarSenha,
                       style: TextStyle(color: c.texto),
                       decoration: decoracao(
-                        'Mínimo de 6 caracteres',
+                        'Mínimo de 8 caracteres',
                         Icons.lock_outline_rounded,
                         suffix: IconButton(
                           onPressed: () =>

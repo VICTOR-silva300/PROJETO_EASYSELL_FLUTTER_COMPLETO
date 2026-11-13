@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'api_service.dart';
 import 'app_shell.dart';
+import 'categorias_empresa.dart';
 import 'tema.dart';
 
 class Cadastro extends StatefulWidget {
@@ -23,9 +25,15 @@ class _CadastroState extends State<Cadastro> {
 
   final nomeController = TextEditingController();
   final emailController = TextEditingController();
+  final nomeEmpresaController = TextEditingController();
+  final cnpjEmpresaController = TextEditingController();
+  final cpfResponsavelController = TextEditingController();
   final senhaController = TextEditingController();
   final confirmarSenhaController = TextEditingController();
 
+  String? categoriaEmpresaSelecionada;
+  String? erroCnpj;
+  String? erroCpfResponsavel;
   bool mostrarSenha = false;
   bool mostrarConfirmarSenha = false;
   bool carregando = false;
@@ -54,6 +62,9 @@ class _CadastroState extends State<Cadastro> {
   void dispose() {
     nomeController.dispose();
     emailController.dispose();
+    nomeEmpresaController.dispose();
+    cnpjEmpresaController.dispose();
+    cpfResponsavelController.dispose();
     senhaController.dispose();
     confirmarSenhaController.dispose();
     super.dispose();
@@ -72,11 +83,73 @@ class _CadastroState extends State<Cadastro> {
     );
   }
 
+  Future<void> _completarContaExistente({
+    required String email,
+    required String senha,
+    required String nomeEmpresa,
+    required String categoria,
+    required String cnpj,
+    required String cpfResponsavel,
+  }) async {
+    ApiService.logout();
+
+    try {
+      await ApiService.login(email, senha, permitirEmpresaAusente: true);
+    } catch (error) {
+      ApiService.logout();
+      final detalhe = error.toString().replaceFirst('Exception: ', '');
+      final orientacao = detalhe.toLowerCase().contains('credenciais inválidas')
+          ? ' Se já tentou cadastrar este e-mail, volte ao login, use '
+                '"Esqueceu sua senha?" e depois tente novamente com a nova senha.'
+          : ' Confira os dados ou tente novamente.';
+      throw Exception(
+        'Não foi possível recuperar a conta. $orientacao Detalhe: $detalhe',
+      );
+    }
+
+    if (ApiService.companyId != null && ApiService.companyId!.isNotEmpty) {
+      ApiService.logout();
+      throw Exception(
+        'Já existe uma conta completa com este e-mail. Entre pela tela de login.',
+      );
+    }
+
+    final id = ApiService.userId;
+    if (id == null || id.isEmpty) {
+      ApiService.logout();
+      throw Exception('A API não retornou o usuário para concluir o cadastro.');
+    }
+
+    try {
+      await ApiService.bootstrapCompany(
+        id,
+        nomeEmpresa,
+        categoria: categoria,
+        cnpj: cnpj,
+        cpfResponsavel: cpfResponsavel,
+      );
+      if (ApiService.companyId == null || ApiService.companyId!.isEmpty) {
+        throw Exception('A API não retornou o identificador da empresa.');
+      }
+    } catch (error) {
+      ApiService.logout();
+      throw Exception(
+        'A conta anterior foi encontrada, mas não foi possível concluir o '
+        'cadastro da empresa: '
+        '${error.toString().replaceFirst('Exception: ', '')}',
+      );
+    }
+  }
+
   Future<void> cadastrar() async {
     FocusScope.of(context).unfocus();
 
     final nome = nomeController.text.trim();
     final email = emailController.text.trim();
+    final nomeEmpresa = nomeEmpresaController.text.trim();
+    final categoria = categoriaEmpresaSelecionada;
+    final cnpj = cnpjEmpresaController.text;
+    final cpfResponsavel = cpfResponsavelController.text;
     final senha = senhaController.text;
     final confirmar = confirmarSenhaController.text;
 
@@ -85,13 +158,37 @@ class _CadastroState extends State<Cadastro> {
       return;
     }
 
+    if (nomeEmpresa.isEmpty) {
+      aviso('Informe o nome da empresa.');
+      return;
+    }
+
+    if (categoria == null) {
+      aviso('Selecione a categoria da empresa.');
+      return;
+    }
+
+    if (cnpj.replaceAll(RegExp(r'\D'), '').length != 14) {
+      setState(() => erroCnpj = 'Informe os 14 dígitos do CNPJ.');
+      aviso('O CNPJ deve conter 14 dígitos.');
+      return;
+    }
+    setState(() => erroCnpj = null);
+
+    if (cpfResponsavel.replaceAll(RegExp(r'\D'), '').length != 11) {
+      setState(() => erroCpfResponsavel = 'Informe os 11 dígitos do CPF.');
+      aviso('O CPF do responsável deve conter 11 dígitos.');
+      return;
+    }
+    setState(() => erroCpfResponsavel = null);
+
     if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
       aviso('Digite um e-mail válido.');
       return;
     }
 
-    if (senha.length < 6) {
-      aviso('A senha precisa ter pelo menos 6 caracteres.');
+    if (senha.length < 8) {
+      aviso('A senha precisa ter pelo menos 8 caracteres.');
       return;
     }
 
@@ -105,8 +202,44 @@ class _CadastroState extends State<Cadastro> {
     setState(() => carregando = true);
 
     try {
-      await ApiService.register(nome, email, senha);
-      await ApiService.login(email, senha);
+      var sessaoRecuperada = false;
+      try {
+        await ApiService.register(
+          nome,
+          email,
+          senha,
+          nomeEmpresa: nomeEmpresa,
+          categoria: categoria,
+          cnpj: cnpj,
+          cpfResponsavel: cpfResponsavel,
+        );
+      } catch (error) {
+        if (!error.toString().contains('Falha ao criar o usuário (HTTP 500)')) {
+          rethrow;
+        }
+
+        await _completarContaExistente(
+          email: email,
+          senha: senha,
+          nomeEmpresa: nomeEmpresa,
+          categoria: categoria,
+          cnpj: cnpj,
+          cpfResponsavel: cpfResponsavel,
+        );
+        sessaoRecuperada = true;
+      }
+
+      if (!sessaoRecuperada) {
+        try {
+          await ApiService.login(email, senha);
+        } catch (error) {
+          throw Exception(
+            'A conta e a empresa foram criadas, mas o login automático falhou. '
+            'Tente entrar pela tela de login. Detalhe: '
+            '${error.toString().replaceFirst('Exception: ', '')}',
+          );
+        }
+      }
 
       if (!mounted) return;
 
@@ -489,12 +622,54 @@ class _CadastroState extends State<Cadastro> {
             tipo: TextInputType.emailAddress,
           ),
           const SizedBox(height: 25),
+          _tituloSecao(Icons.storefront_outlined, 'Dados da empresa'),
+          const SizedBox(height: 17),
+          _campo(
+            'Nome da empresa',
+            nomeEmpresaController,
+            'Ex.: EasySell Comércio',
+            Icons.storefront_outlined,
+            capitalizacao: TextCapitalization.words,
+          ),
+          const SizedBox(height: 16),
+          _campoCategoriaEmpresa(),
+          const SizedBox(height: 16),
+          _campo(
+            'CNPJ',
+            cnpjEmpresaController,
+            '14 dígitos, somente números',
+            Icons.badge_outlined,
+            tipo: TextInputType.number,
+            formatadores: [FilteringTextInputFormatter.digitsOnly],
+            maxLength: 14,
+            erro: erroCnpj,
+            mudou: (_) {
+              if (erroCnpj != null) setState(() => erroCnpj = null);
+            },
+          ),
+          const SizedBox(height: 16),
+          _campo(
+            'CPF do responsável',
+            cpfResponsavelController,
+            '11 dígitos, somente números',
+            Icons.person_pin_outlined,
+            tipo: TextInputType.number,
+            formatadores: [FilteringTextInputFormatter.digitsOnly],
+            maxLength: 11,
+            erro: erroCpfResponsavel,
+            mudou: (_) {
+              if (erroCpfResponsavel != null) {
+                setState(() => erroCpfResponsavel = null);
+              }
+            },
+          ),
+          const SizedBox(height: 25),
           _tituloSecao(Icons.lock_outline_rounded, 'Segurança'),
           const SizedBox(height: 17),
           _campo(
             'Senha',
             senhaController,
-            'Crie uma senha forte',
+            'Mínimo de 8 caracteres',
             Icons.lock_outline_rounded,
             obscure: !mostrarSenha,
             mudou: (_) => setState(() {}),
@@ -629,6 +804,65 @@ class _CadastroState extends State<Cadastro> {
     );
   }
 
+  Widget _campoCategoriaEmpresa() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Categoria da empresa',
+          style: TextStyle(
+            color: c.texto,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 9),
+        DropdownButtonFormField<String>(
+          initialValue: categoriaEmpresaSelecionada,
+          isExpanded: true,
+          dropdownColor: c.superficie,
+          style: TextStyle(color: texto, fontSize: 13),
+          decoration: InputDecoration(
+            hintText: 'Selecione uma categoria',
+            hintStyle: TextStyle(color: c.textoFraco, fontSize: 12),
+            prefixIcon: Icon(Icons.category_outlined, color: azul, size: 19),
+            filled: true,
+            fillColor: c.ehEscuro
+                ? const Color(0xFF080D21)
+                : const Color(0xFFF1F5FC),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 15,
+              vertical: 17,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: c.bordaMedia),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: Color(0xFF2563EB), width: 1.4),
+            ),
+          ),
+          items: categoriasEmpresa
+              .map(
+                (categoria) => DropdownMenuItem(
+                  value: categoria,
+                  child: Text(
+                    categoria,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (categoria) {
+            setState(() => categoriaEmpresaSelecionada = categoria);
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _campo(
     String rotulo,
     TextEditingController controller,
@@ -639,6 +873,9 @@ class _CadastroState extends State<Cadastro> {
     bool obscure = false,
     Widget? sufixo,
     ValueChanged<String>? mudou,
+    List<TextInputFormatter>? formatadores,
+    int? maxLength,
+    String? erro,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -656,6 +893,8 @@ class _CadastroState extends State<Cadastro> {
           controller: controller,
           obscureText: obscure,
           keyboardType: tipo,
+          inputFormatters: formatadores,
+          maxLength: maxLength,
           textCapitalization: capitalizacao,
           autocorrect: false,
           onChanged: mudou,
@@ -666,10 +905,12 @@ class _CadastroState extends State<Cadastro> {
             hintStyle: TextStyle(color: c.textoFraco, fontSize: 12),
             prefixIcon: Icon(icon, color: azul, size: 19),
             suffixIcon: sufixo,
+            errorText: erro,
             filled: true,
             fillColor: c.ehEscuro
                 ? const Color(0xFF080D21)
                 : const Color(0xFFF1F5FC),
+            counterText: maxLength == null ? null : '',
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 15,
               vertical: 17,

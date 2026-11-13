@@ -138,21 +138,6 @@ O botão de modo escuro em **Configurações** alterna o app inteiro entre claro
 - ✅ Web
 - ✅ Windows
 
-## 🛣️ Próximos passos
-
-- [ ] Adicionar capturas de tela ao README
-- [ ] Testes automatizados
-- [ ] Publicação nas lojas
-
-## 🤝 Contribuindo
-
-1. Faça um fork do projeto
-2. Crie uma branch: `git checkout -b feature/minha-feature`
-3. Commit: `git commit -m "feat: minha feature"`
-4. Push: `git push origin feature/minha-feature`
-5. Abra um Pull Request
-
----
 
 <div align="center">
 
